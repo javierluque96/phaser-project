@@ -4,9 +4,9 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
    * Player manager
    * @param {*} config
    */
-  constructor(scene) {
-    super(scene, 300, 376, "hero");
-
+  constructor(scene, playerInfo, texture) {
+    super(scene, playerInfo.x, playerInfo.y, texture);
+    
     scene.add.existing(this);
     scene.physics.world.enableBody(this);
 
@@ -18,6 +18,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     scene.input.on("pointerdown", () => { this.handleJump(this) }, scene); // prettier-ignore
     scene.cameras.main.setBounds(0, 0, 1920, 1440);
     scene.cameras.main.startFollow(this);
+    scene.players.add(this);
   }
 
   handleJump(hero) {
