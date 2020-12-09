@@ -16,23 +16,24 @@ class Level1 extends Phaser.Scene {
 
     this.players = this.physics.add.group();
 
-    // this.socket = global.socket;
     this.socket = io();
     let self = this;
-
     // Socket
-    this.socket.on("new player", (playerInfo) => {
-      if (playerInfo.playerId === this.socket.id) {
-        self.hero = new Player(self, playerInfo, "hero");
-        console.log(this.hero);
-      } else {
-        // new Player(this, players[id], "enemy");
-        console.log(new Player(self, playerInfo, "enemy"));
-      }
+    this.socket.on("new player", (players) => {
+      Object.keys(players).forEach(function (id) {
+        if (players[id].playerId === self.socket.id) {
+          self.hero = new Player(self, players[id], "hero");
+        } else {
+          new Player(self, players[id], "enemy");
+        }
+      });
     });
 
-    this.socket.on("disconnect", (playerId) => {
-      console.log(self.hero);
+    this.socket.on("new enemy", (playerInfo) => {
+      new Player(this, playerInfo, "enemy");
+    });
+
+    this.socket.on("user disconnected", (playerId) => {
       this.players.getChildren().forEach((otherPlayer) => {
         if (playerId === otherPlayer.playerId) {
           otherPlayer.destroy();
@@ -50,32 +51,37 @@ class Level1 extends Phaser.Scene {
   } // create
 
   update() {
-    this.hero.setDefaultValues();
+    if (this.hero) {
+      this.hero.setDefaultValues();
 
-    this.physics.world.collide(
-      this.hero,
-      this.layer,
-      (hero, layer) => {
-        hero.collideTile();
-      },
-      null,
-      this
-    );
+      this.physics.world.collide(
+        this.hero,
+        this.layer,
+        (hero, layer) => {
+          hero.collideTile();
+        },
+        null,
+        this
+      );
 
-    let x = this.hero.x;
-    let y = this.hero.y;
+      let x = this.hero.x;
+      let y = this.hero.y;
 
-    if (this.hero.oldPosition && (x !== this.hero.oldPosition.x || y !== this.hero.oldPosition.y)) {
-      this.socket.emit("playerMovement", {
+      if (
+        this.hero.oldPosition &&
+        (x !== this.hero.oldPosition.x || y !== this.hero.oldPosition.y)
+      ) {
+        this.socket.emit("playerMovement", {
+          x: this.hero.x,
+          y: this.hero.y,
+        });
+      }
+
+      this.hero.oldPosition = {
         x: this.hero.x,
         y: this.hero.y,
-      });
+      };
     }
-
-    this.hero.oldPosition = {
-      x: this.hero.x,
-      y: this.hero.y,
-    };
   } // update
 } // class
 

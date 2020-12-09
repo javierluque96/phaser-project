@@ -6,19 +6,21 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
    */
   constructor(scene, playerInfo, texture) {
     super(scene, playerInfo.x, playerInfo.y, texture);
+    this.playerId = playerInfo.playerId;
     
     scene.add.existing(this);
     scene.physics.world.enableBody(this);
-
-    this.body.velocity.x = global.gameOptions.playerSpeed;
-    this.canJump = true;
-    this.canDoubleJump = false;
-    this.onWall = false;
-
-    scene.input.on("pointerdown", () => { this.handleJump(this) }, scene); // prettier-ignore
-    scene.cameras.main.setBounds(0, 0, 1920, 1440);
-    scene.cameras.main.startFollow(this);
-    scene.players.add(this);
+    
+    if (scene.socket.id == playerInfo.playerId) {
+      this.body.velocity.x = global.gameOptions.playerSpeed;
+      this.canJump = true;
+      this.canDoubleJump = false;
+      this.onWall = false;
+      scene.input.on("pointerdown", () => { this.handleJump(this) }, scene); // prettier-ignore
+      scene.cameras.main.setBounds(0, 0, 1920, 1440);
+      scene.cameras.main.startFollow(this);
+    }
+    scene.players.add(this)
   }
 
   handleJump(hero) {

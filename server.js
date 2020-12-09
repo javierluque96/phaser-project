@@ -24,12 +24,12 @@ io.on("connection", (socket) => {
     y: Math.floor(Math.random() * 480) + 50,
   };
 
-  socket.emit("new player", players[socket.id]);
+  socket.emit("new player", players);
+  socket.broadcast.emit("new enemy", players[socket.id]);
 
   socket.on("playerMovement", (movementData) => {
     players[socket.id].x = movementData.x;
     players[socket.id].y = movementData.y;
-    players[socket.id].rotation = movementData.rotation;
     socket.broadcast.emit("playerMoved", players[socket.id]);
   });
 
