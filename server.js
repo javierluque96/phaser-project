@@ -1,12 +1,11 @@
 let express = require("express");
 let app = express(); //referencia a lo de arriba
-var path = require("path");
 let server = require("http").createServer(app);
 let io = require("socket.io")(server);
 let port = process.env.PORT || 8081;
 
 //we will store the player data in memory on the server
-var players = {};
+let players = {};
 
 app.use(express.static(__dirname + "/public"));
 

@@ -7,10 +7,10 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
   constructor(scene, playerInfo, texture) {
     super(scene, playerInfo.x, playerInfo.y, texture);
     this.playerId = playerInfo.playerId;
-    
+
     scene.add.existing(this);
     scene.physics.world.enableBody(this);
-    
+
     if (scene.socket.id == playerInfo.playerId) {
       this.body.velocity.x = global.gameOptions.playerSpeed;
       this.canJump = true;
@@ -20,7 +20,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       scene.cameras.main.setBounds(0, 0, 1920, 1440);
       scene.cameras.main.startFollow(this);
     }
-    scene.players.add(this)
+    scene.players.add(this);
   }
 
   handleJump(hero) {
@@ -42,15 +42,21 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
   }
 
-  collideTile() {
+  collideTile(layer) {
     let blockedDown = this.body.blocked.down;
     let blockedLeft = this.body.blocked.left;
     let blockedRight = this.body.blocked.right;
+    let shouldStop = false;
 
     this.canDoubleJump = false;
 
     if (blockedDown) {
       this.canJump = true;
+
+      if (layer.index == global.STOP_TILE) {
+        // hero should stop
+        shouldStop = true;
+      }
     }
 
     if (blockedRight) {
@@ -68,7 +74,7 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     }
 
     // adjusting hero speed according to the direction it's moving
-    this.setPlayerXVelocity(!this.onWall || blockedDown);
+    this.setPlayerXVelocity(!this.onWall || blockedDown, shouldStop);
   }
 
   setDefaultValues() {
@@ -77,8 +83,12 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
     this.setPlayerXVelocity(true);
   }
 
-  setPlayerXVelocity(defaultDirection) {
-    this.body.velocity.x =
-      global.gameOptions.playerSpeed * (this.flipX ? -1 : 1) * (defaultDirection ? 1 : -1);
+  setPlayerXVelocity(defaultDirection, stopHero) {
+    if (stopHero) {
+      this.body.velocity.x = 0;
+    } else {
+      this.body.velocity.x =
+        global.gameOptions.playerSpeed * (this.flipX ? -1 : 1) * (defaultDirection ? 1 : -1);
+    }
   }
 }

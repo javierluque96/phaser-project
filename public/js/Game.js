@@ -3,7 +3,7 @@ import Menu from "./Menu.js";
 import Level1 from "./Level1.js";
 
 let global = {
-  // socket: io(),
+  STOP_TILE: 2,
   config: {
     type: Phaser.CANVAS,
     width: 640,

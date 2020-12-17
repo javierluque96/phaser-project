@@ -11,14 +11,14 @@ class Level1 extends Phaser.Scene {
       key: "level2",
     });
     let tiles = map.addTilesetImage("tileset01", "tile");
-    map.setCollision(1);
+    map.setCollision(1, 2);
     this.layer = map.createStaticLayer("layer01", tiles);
 
     this.players = this.physics.add.group();
 
+    // Socket
     this.socket = io();
     let self = this;
-    // Socket
     this.socket.on("new player", (players) => {
       Object.keys(players).forEach(function (id) {
         if (players[id].playerId === self.socket.id) {
@@ -58,7 +58,7 @@ class Level1 extends Phaser.Scene {
         this.hero,
         this.layer,
         (hero, layer) => {
-          hero.collideTile();
+          hero.collideTile(layer);
         },
         null,
         this
