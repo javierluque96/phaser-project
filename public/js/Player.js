@@ -54,7 +54,6 @@ export default class Player extends Phaser.Physics.Arcade.Sprite {
       this.canJump = true;
 
       if (layer.index == global.STOP_TILE) {
-        // hero should stop
         shouldStop = true;
       }
     }

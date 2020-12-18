@@ -6,18 +6,26 @@ class Level1 extends Phaser.Scene {
     super("Level1");
   }
 
+  init(data) {
+    if (data != undefined) {
+      this.socket = data.socket;
+    }
+  }
+
   create() {
-    let map = this.make.tilemap({
+    this.map = this.make.tilemap({
       key: "level2",
     });
-    let tiles = map.addTilesetImage("tileset01", "tile");
-    map.setCollision(1, 2);
-    this.layer = map.createStaticLayer("layer01", tiles);
+    let tiles = this.map.addTilesetImage("tileset01", "tile");
+    this.map.setCollision(1, 3);
+    this.layer = this.map.createStaticLayer("layer01", tiles);
 
     this.players = this.physics.add.group();
 
     // Socket
-    this.socket = io();
+    if (this.socket == undefined) {
+      this.socket = io();
+    }
     let self = this;
     this.socket.on("new player", (players) => {
       Object.keys(players).forEach(function (id) {
@@ -53,6 +61,12 @@ class Level1 extends Phaser.Scene {
   update() {
     if (this.hero) {
       this.hero.setDefaultValues();
+      let tile = this.map.getTileAtWorldXY(this.hero.x, this.hero.y);
+
+      if (tile != null && tile.index == 2) {
+        this.hero.destroy();
+        this.scene.start("End", { socket: this.socket, playerId: this.hero.playerId });
+      }
 
       this.physics.world.collide(
         this.hero,

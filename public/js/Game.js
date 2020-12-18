@@ -1,6 +1,7 @@
 import BootLoader from "./BootLoader.js";
 import Menu from "./Menu.js";
 import Level1 from "./Level1.js";
+import End from "./End.js";
 
 let global = {
   STOP_TILE: 2,
@@ -21,7 +22,7 @@ let global = {
       // mode: Phaser.Scale.FIT,
       // autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [BootLoader, Menu, Level1],
+    scene: [BootLoader, Menu, Level1, End],
   },
   gameOptions: {
     playerGravity: 900,
