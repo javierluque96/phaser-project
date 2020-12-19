@@ -57,6 +57,16 @@ io.on("connection", (socket) => {
   });
 });
 
-server.listen(port, () => {
-  console.log(`http://localhost:${server.address().port}`);
+// Local
+// server.listen(port, () => {
+//   console.log(`http://localhost:${server.address().port}`);
+// });
+
+// Heroku
+let server_port = process.env.YOUR_PORT || process.env.PORT || 80;
+
+let server_host = process.env.YOUR_HOST || "0.0.0.0";
+
+server.listen(server_port, server_host, () => {
+  console.log("Listening on port %d", server_port);
 });
