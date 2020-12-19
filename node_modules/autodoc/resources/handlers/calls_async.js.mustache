@@ -1,0 +1,15 @@
+var {{{callback}}} = jasmine.createSpy();
+
+runs(function() {
+  {{{actual}}}
+  expect({{{callback}}}).not.toHaveBeenCalled();
+});
+
+waitsFor(function() {
+  return {{{callback}}}.calls.length === {{{count}}};
+});
+
+runs(function() {
+  expect({{{callback}}}.calls.length).toEqual({{{count}}},
+    'Expected {{{actualEscaped}}} to call {{{callback}}} {{{count}}} time(s) asynchronously.');
+});

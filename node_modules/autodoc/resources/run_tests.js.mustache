@@ -1,0 +1,135 @@
+{{#globals}}
+{{> global}}
+{{/globals}}
+
+{{#variable}}
+{{> global}}
+
+var fs       = require('fs'),
+    source   = fs.readFileSync('{{{location}}}', 'utf8'),
+    lines    = source.split('\n'),
+    jasmine  = require('jasmine-node'),
+    env      = jasmine.getEnv();
+{{/variable}}
+
+function print(string) {
+  process.stderr.write(string);
+}
+
+function green(string) {
+  return '\x1B[32m' + string + '\x1B[39m';
+}
+
+function red(string) {
+  return '\x1B[31m' + string + '\x1B[39m';
+}
+
+function grey(string) {
+  return '\x1B[90m' + string + '\x1B[39m';
+}
+
+function displayFailingSpec(spec, index) {
+  // Autodoc generates 1 item per spec
+  var item = spec.results().getItems()[0];
+
+  console.error('  ' + index + ') ' + red(item.message) + '\n');
+  displayLine(spec.absoluteLine);
+}
+
+// TODO: Roughly this same code is duplicated in bin/autodoc. Put it somewhere
+// shared.
+function displayLine(lineNumber) {
+  if (typeof lineNumber === 'undefined' || lineNumber !== lineNumber) {
+    console.error('    <unknown line number>\n');
+    return;
+  }
+
+  var startingLine = Math.max(lineNumber - 5, 0);
+  var endingLine   = lineNumber + 5;
+
+  // Display surrounding lines, for context
+  var linesBefore  = lines.slice(startingLine, lineNumber);
+  var linesAfter   = lines.slice(lineNumber + 1, lineNumber + 5);
+
+  linesBefore.forEach(function(line, i) {
+    line = (startingLine + i) + ': ' + line;
+    console.error('    ' + grey(line));
+  });
+
+  // Highlight the offending line to make it obvious
+  console.error('    ' + red(lineNumber + ': ' + lines[lineNumber]));
+
+  linesAfter.forEach(function(line, i) {
+    line = (lineNumber + 1 + i) + ': ' + line;
+    console.error('    ' + grey(line));
+  });
+
+  console.error('\n');
+}
+
+var totalSpecs   = 0,
+    failingSpecs = [];
+
+env.addReporter({
+  reportSpecResults: function(spec) {
+    if (totalSpecs === 0) {
+      print('\n');
+    }
+
+    if (spec.results().passed()) {
+      print(green('.'));
+    } else {
+      print(red('F'));
+      failingSpecs.push(spec);
+    }
+
+    ++totalSpecs;
+  },
+
+  reportSuiteResults: function(suite) {
+  },
+
+  reportRunnerResults: function() {
+    if (failingSpecs.length > 0) {
+      console.error('\n');
+
+      for (var i = 0, len = failingSpecs.length; i < len; ++i) {
+        displayFailingSpec(failingSpecs[i], i + 1);
+      }
+    }
+
+    var runningTime  = Date.now() - startTime,
+        failureCount = failingSpecs.length,
+        successCount = totalSpecs - failureCount;
+
+    if (failingSpecs.length === 0) {
+      console.log('\n');
+    }
+
+    console.log('  Ran ' + totalSpecs + ' specs in ' + runningTime + 'ms.');
+    console.log('  ' + green(successCount + ' passed') + ', ' +
+      (failureCount > 0 ? red(failureCount + ' failed') : '0 failed') + '\n');
+  }
+});
+
+{{{exampleHelpers}}}
+
+{{#privateMembers}}
+var {{shortName}} = {{{source}}};
+{{#methods}}
+{{longName}} = {{{source}}};
+{{/methods}}
+{{/privateMembers}}
+
+{{#namespaces}}
+{{#hasExamples}}
+describe('{{namespace}}', function() {
+  {{#allMembers}}
+    {{> examples}}
+  {{/allMembers}}
+});
+{{/hasExamples}}
+{{/namespaces}}
+
+var startTime = Date.now();
+env.execute();

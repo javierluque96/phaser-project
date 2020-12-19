@@ -1,0 +1,41 @@
+pre {
+  background-color: #fff;
+  border: 0;
+  border-top: 1px solid black;
+  border-bottom: 1px solid black;
+  border-radius: 0;
+
+  transition: background-color 1s;
+
+  &.highlight {
+    background-color: #ff8 !important;
+  }
+
+  span.line {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+
+    &.passed:before {
+      content: "\2713"; // checkmark
+
+      position: absolute;
+      top: -3px;
+      display: inline-block;
+      left: -20px;
+      color: #080;
+      font-size: 125%;
+    }
+
+    &.failed:before {
+      content: "\00D7"; // x
+
+      position: absolute;
+      top: -3px;
+      display: inline-block;
+      left: -20px;
+      color: #f00;
+      font-size: 125%;
+    }
+  }
+}

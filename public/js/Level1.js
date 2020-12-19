@@ -16,7 +16,7 @@ class Level1 extends Phaser.Scene {
     let self = this;
 
     this.map = this.make.tilemap({
-      key: "level2",
+      key: "level1",
     });
     let tiles = this.map.addTilesetImage("tileset01", "tile");
     this.map.setCollision(1, 3);

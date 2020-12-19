@@ -1,0 +1,30 @@
+{{#hasExamples}}
+describe('{{shortName}}', function() {
+  {{#examples}}
+  {{{setup}}}
+  {{#list}}
+  {{^broken}}
+  (function() {
+    var spec = it('{{{actualEscaped}}} => {{{expectedEscaped}}}', function() {
+      {{#exampleSource}}
+      {{{exampleSource}}}
+      {{/exampleSource}}
+      {{^exampleSource}}
+      {{{statement}}};
+      var expected = {{{expected}}};
+      expect({{variable}}).toEqual(expected);
+      {{/exampleSource}}
+    });
+
+    spec.suiteId      = '{{identifier}}';
+    spec.exampleId    = '{{identifier}}-{{id}}';
+    spec.actual       = '{{{actualEscaped}}}';
+    spec.expected     = '{{{expectedEscaped}}}';
+    spec.lineNumber   = {{relativeLine}};
+    spec.absoluteLine = {{absoluteLine}};
+  }());
+  {{/broken}}
+  {{/list}}
+  {{/examples}}
+});
+{{/hasExamples}}

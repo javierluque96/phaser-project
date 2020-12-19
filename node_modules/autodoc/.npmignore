@@ -1,0 +1,14 @@
+# Ignore the node_modules directory
+node_modules/
+
+# Ignore the SASS cache
+.sass-cache/
+
+# Ignore .DS_store file
+.DS_Store
+
+# Ignore any files generated for the example
+autodoc/
+
+# Ignore debug log
+npm-debug.log

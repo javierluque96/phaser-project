@@ -1,0 +1,375 @@
+#!/usr/bin/env node
+
+var fs   = require('fs'),
+    path = require('path');
+
+// External dependencies -- adding weird prefixes here to prevent name
+// collisions when actually testing any of these libraries (by which I really
+// just mean Autodoc, clearly).
+var _Autodoc   = require(path.join(__dirname, '../autodoc-node')),
+    _bootscrap = require('bootscrap'),
+    _esprima   = require('esprima'),
+    _Lazy      = require('lazy.js'),
+    _less      = require('less'),
+    _commander = require('commander'),
+    _resolve   = require('resolve');
+
+// Read package info from package.json -- just one less thing to keep track of.
+var packagePath = path.join(__dirname, '../package.json'),
+    packageInfo = JSON.parse(readFile(packagePath));
+
+function argToList(arg) {
+  return arg.split(/,\s*/);
+}
+
+function argToObject(arg) {
+  var list = argToList(arg);
+  return _Lazy(list)
+    .map(function(pair) {
+      return pair.split(':');
+    })
+    .toObject();
+}
+
+function argToGlobals(arg) {
+  var refs = argToObject(arg);
+  return _Lazy(refs)
+    .map(function(library, variable) {
+      return getVariable(
+        variable,
+        _resolve.sync(library, { basedir: process.cwd() })
+      );
+    })
+    .toArray();
+}
+
+function getVariable(variable, location) {
+  return {
+    variable: variable,
+    legalVariableName: /^[a-z_]\w*$/i.test(variable),
+    location: location
+  };
+}
+
+function fileExists(filePath) {
+  return (fs.existsSync || path.existsSync)(filePath);
+}
+
+function readFile(filePath) {
+  return fs.readFileSync(filePath, 'utf-8');
+}
+
+function writeFile(destination, content) {
+  var directory = path.dirname(destination);
+  if (!fileExists(directory)) {
+    fs.mkdirSync(directory);
+  }
+
+  fs.writeFileSync(destination, content);
+}
+
+function readPartialsFromFolder(folder) {
+  if (!fileExists(folder)) {
+    return {};
+  }
+
+  return _Lazy(fs.readdirSync(folder))
+    .map(function(fileName) {
+      return fileName.match(/^(.*)\.js\.mustache/);
+    })
+    .compact()
+    .map(function(match) {
+      return [
+        path.basename(match[1], '.js.mustache'),
+        readFile(path.join(folder, match[0]))
+      ];
+    })
+    .toObject();
+}
+
+function inferLanguage(fileName) {
+  switch (path.extname(fileName)) {
+    case '.coffee':
+      return 'coffeescript';
+
+    default:
+      return 'javascript';
+  }
+}
+
+function attempt(js) {
+  try {
+
+    // Parse the JS before eval-ing it, so that we can report intelligently on
+    // syntax errors.
+    _esprima.parse(js);
+
+  } catch (e) {
+    var errorMatch = String(e).match(/Error: Line (\d+)/);
+
+    if (errorMatch) {
+      var errorLine    = +errorMatch[1],
+          startingLine = Math.max(errorLine - 5, 0),
+          endingLine   = errorLine + 5;
+
+      var snippet = _Lazy(js).split('\n')
+        .skip(startingLine)
+        .take(endingLine - startingLine)
+        .map(function(line, i) {
+          var lineNumber = i + startingLine + 1;
+
+          line = lineNumber + ': ' + line;
+          if (lineNumber === errorLine) {
+            line = '\x1B[31m' + line + '\x1B[39m';
+          }
+
+          return line;
+        })
+        .join('\n');
+
+      console.error('Error on line ' + errorLine + ':');
+      console.error(snippet);
+
+      e = '\nAutodoc generated invalid JavaScript; see stderr output above!\n';
+    }
+
+    console.error(e.toString());
+    process.exit(1);
+  }
+
+  eval(js);
+}
+
+_commander
+  .version(packageInfo.version)
+  .usage('[options] file[,file2,file3,...]')
+  .option('-t, --test', 'run tests')
+  .option('-p, --perf', 'run performance benchmarks')
+  .option('-d, --dump', 'dump data to console and exit')
+  .option('-o, --output <destination>', 'specify an output directory (defaults to "autodoc")')
+  .option('--language <language>', 'specify the library language: either javascript (default) or coffeescript')
+  .option('--template <path>', 'use a custom Mustache template')
+  .option('--handlers <path>', 'specify a path to a custom handlers file')
+  .option('--partials <path>', 'specify a folder containing additional Mustache partials')
+  .option('--template-data <list>', 'provide a list of additional arbitrary data (e.g. version:1.5,build:12345) to supply to the template', argToObject)
+  .option('--namespaces <names>', 'provide a comma-separated list of the namespaces to document (defaults to all, in alphabetical order)', argToList)
+  .option('--javascripts <sources>', 'specify additional JS dependencies (comma-separated)', argToList)
+  .option('--tags <tag>', 'only use the methods tagged with the specified tag')
+  .option('--grep <pattern>', 'only run tests/benchmarks for methods whose names match the given pattern')
+  .option('--variable <name>', 'provide a name for the variable traditionally used by the library (e.g., jQuery, $, _) -- used for tests and benchmarks')
+  .option('--globals <list>', 'provide a list of global references (e.g. _:underscore,$:jQuery) your tests and/or benchmarks require', argToGlobals)
+  .option('--theme <theme>', 'specify a theme, if you want (default: flatly)')
+  .option('--verbose', 'produce verbose output when running tests (has no effect otherwise)')
+  .parse(process.argv);
+
+// Spit out help and exit if the user didn't supply an input file.
+if (process.argv.length <= 2) {
+  _commander.help();
+  process.exit();
+}
+
+var filePaths       = argToList(process.argv.pop()),
+    outputDir       = _commander.output || 'autodoc',
+    handlersPath    = _commander.handlers || path.join(outputDir, 'handlers.js'),
+    partialsDir     = _commander.partials || outputDir,
+    handlersExists  = fileExists(handlersPath),
+    docHelperPath   = path.join(outputDir, 'doc_helper.js'),
+    docHelperExists = fileExists(docHelperPath),
+    theme           = _commander.theme || 'flatly';
+
+// TODO: This is just straight up wrong. I shouldn't be treating the first file
+// as THE library file. But... that's what I'm doing for now, because it will
+// sort of work...
+var filePath        = filePaths[0],
+    libraryFileName = path.basename(filePath);
+
+var options         = _Autodoc.options;
+options.namespaces  = _commander.namespaces;
+options.tags        = _commander.tags;
+options.grep        = _commander.grep;
+options.javascripts = _commander.javascripts || [];
+options.language    = _commander.language || inferLanguage(filePath);
+
+// Always include a reference to the library itself.
+// Down below, we'll copy the library to the output folder.
+if (!_Lazy(options.javascripts).contains(libraryFileName)) {
+  if (options.language === 'coffeescript') {
+    options.javascripts.push('http://coffeescript.org/extras/coffee-script.js');
+
+    options.javascripts.push({
+      language: 'coffeescript',
+      src: libraryFileName
+    });
+
+  } else {
+    options.javascripts.push(libraryFileName);
+  }
+}
+
+var resourcesDir = path.join(__dirname, '../resources');
+options.templatePartials = _Lazy(readPartialsFromFolder(resourcesDir))
+  .extend(readPartialsFromFolder(path.join(resourcesDir, 'handlers')))
+  .extend(readPartialsFromFolder(partialsDir))
+  .toObject();
+
+if (handlersExists) {
+  // Also require it locally.
+  options.exampleHandlers = require(path.join(process.cwd(), handlersPath)).exampleHandlers;
+}
+
+options.extraOptions = _Lazy(_commander.templateData || {})
+  .extend({ globals: _commander.globals || [] })
+  .toObject();
+
+if (docHelperExists) {
+  options.javascripts.push('doc_helper.js');
+}
+
+var libraryInfo = _Lazy(filePaths)
+  .map(function(filePath) {
+    var sourceCode = readFile(filePath);
+    return _Autodoc.parse(sourceCode, options);
+  })
+  .reduce(function(mergedInfo, info) {
+    var push = Array.prototype.push;
+
+    _Lazy(info.namespaces).each(function(namespace) {
+      var existingNamespace = _Lazy(mergedInfo.namespaces).findWhere({
+        namespace: namespace.namespace
+      });
+
+      if (existingNamespace) {
+        push.apply(existingNamespace.allMembers, namespace.allMembers);
+        push.apply(existingNamespace.members, namespace.members);
+      } else {
+        mergedInfo.namespaces.push(namespace);
+      }
+    });
+    return mergedInfo;
+  });
+
+options.extraOptions.variable = getVariable(
+  _commander.variable || libraryInfo.referenceName || '__lib__',
+  _Autodoc.escapeJsString(path.join(process.cwd(), filePath))
+);
+
+// Update all JavaScript options to look like { language, src } instead of just
+// strings. (This is specifically for CoffeeScript suppot.)
+for (var i = 0; i < options.javascripts.length; ++i) {
+  if (typeof options.javascripts[i] === 'string') {
+    options.javascripts[i] = {
+      language: 'javascript',
+      src: options.javascripts[i]
+    };
+  }
+}
+
+function runTests() {
+  var templatePath = path.join(__dirname, '../resources/run_tests.js.mustache');
+
+  options.template = readFile(templatePath);
+
+  var examplesJs = _Autodoc.generate(libraryInfo, options);
+
+  if (_commander.dump) {
+    console.log(examplesJs);
+  }
+
+  attempt(examplesJs);
+
+  return examplesJs;
+}
+
+function runBenchmarks() {
+  var templatePath = path.join(__dirname, '../resources/run_benchmarks.js.mustache');
+
+  options.template = readFile(templatePath);
+
+  var benchmarksJs = _Autodoc.generate(libraryInfo, options);
+
+  if (_commander.dump) {
+    console.log(benchmarksJs);
+  }
+
+  attempt(benchmarksJs);
+
+  return benchmarksJs;
+}
+
+function generateDocs() {
+  if (_commander.dump) {
+    console.log(JSON.stringify(libraryInfo, null, 2));
+  }
+
+  var templatePath = _commander.template ||
+    path.join(__dirname, '../resources/docs.html.mustache');
+
+  options.template = readFile(templatePath);
+
+  var docsHtml = _Autodoc.generate(libraryInfo, options);
+
+  writeFile(path.join(outputDir, 'index.html'), docsHtml);
+
+  function copyFile(source, destination, force) {
+    // Don't obliterate files that are already there.
+    // TODO: Think about this a bit more.
+    if (force || !fileExists(destination)) {
+      fs.createReadStream(source).pipe(fs.createWriteStream(destination));
+    }
+  }
+
+  function copyResource(relativePath, force) {
+    if (arguments.length < 2) {
+      force = true;
+    }
+
+    copyFile(
+      path.join(__dirname, '../resources', relativePath),
+      path.join(outputDir, path.basename(relativePath)),
+      force
+    );
+  }
+
+  var parser = new _less.Parser({
+    paths: [path.dirname(_bootscrap.path(theme))],
+    filename: 'docs.less'
+  });
+
+  var less = readFile(path.join(__dirname, '../resources/stylesheets/docs.less')).replace('{{theme}}', theme);
+
+  parser.parse(less, function(err, tree) {
+    if (err) {
+      console.log(err);
+      return;
+    }
+
+    var css = tree.toCSS();
+    writeFile(path.join(outputDir, 'docs.css'), css);
+  });
+
+  copyResource('stylesheets/examples.css');
+  copyResource('stylesheets/highlight.css');
+  copyResource('images/gears.gif');
+  copyResource('javascripts/utils.js');
+  copyResource('javascripts/docs.js');
+
+  _Lazy(filePaths).each(function(filePath) {
+    copyFile(filePath, path.join(outputDir, path.basename(filePath)), true);
+  });
+
+  console.log('Docs written to ' + outputDir + '/');
+
+  return docsHtml;
+}
+
+if (_commander.test) {
+  runTests();
+}
+
+if (_commander.perf) {
+  runBenchmarks();
+}
+
+if (!(_commander.test || _commander.perf)) {
+  generateDocs();
+}
