@@ -27,6 +27,11 @@ io.on("connection", (socket) => {
     io.emit("players", players);
   });
 
+  socket.on("player inactive", () => {
+    players[socket.id].active = false;
+    io.emit("players", players);
+  });
+
   socket.on("level1", () => {
     players[socket.id] = {
       playerId: socket.id,
@@ -46,7 +51,6 @@ io.on("connection", (socket) => {
 
   socket.on("winner", () => {
     io.emit("winner");
-    io.emit("players", players);
   });
 
   socket.on("disconnect", () => {

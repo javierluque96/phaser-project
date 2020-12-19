@@ -5,7 +5,8 @@ class End extends Phaser.Scene {
     super("End");
   }
   create() {
-    this.scene.remove("Level1")
+    global.socket.emit("player inactive");
+    this.scene.remove("Level1");
     let config = global.config;
     global.playingGame = false;
     this.add
@@ -15,16 +16,12 @@ class End extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    let playAgain = this.add
+    this.add
       .text(config.width / 2, config.height / 2, "Refresh to play again", {
         font: "25px Arial",
         fill: "yellow",
       })
       .setOrigin(0.5);
-
-    // playAgain.setInteractive().on("pointerdown", () => {
-    //   this.scene.switch("Menu");
-    // });
   }
 }
 

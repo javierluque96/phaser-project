@@ -33,7 +33,6 @@ let global = {
     playerGrip: 100,
     // enemySpeed: 150,
   },
-  playingGame: false,
 };
 
 new Phaser.Game(global.config);
