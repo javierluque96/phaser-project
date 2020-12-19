@@ -5,6 +5,7 @@ class End extends Phaser.Scene {
     super("End");
   }
   create() {
+    this.scene.remove("Level1")
     let config = global.config;
     global.playingGame = false;
     this.add
