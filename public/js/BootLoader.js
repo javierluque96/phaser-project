@@ -1,4 +1,4 @@
-// import global from "./Game.js";
+import global from "./Game.js";
 
 class BootLoader extends Phaser.Scene {
     constructor(){
@@ -16,7 +16,8 @@ class BootLoader extends Phaser.Scene {
     }
 
     create(){
-        this.scene.start("Level1");
+        global.socket = io();
+        this.scene.start("Menu");
     }
 
 }

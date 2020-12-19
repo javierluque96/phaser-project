@@ -3,6 +3,7 @@ import Menu from "./Menu.js";
 import Level1 from "./Level1.js";
 import End from "./End.js";
 
+
 let global = {
   STOP_TILE: 2,
   config: {
@@ -32,6 +33,7 @@ let global = {
     playerGrip: 100,
     // enemySpeed: 150,
   },
+  playingGame: false,
 };
 
 new Phaser.Game(global.config);

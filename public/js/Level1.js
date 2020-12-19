@@ -1,4 +1,4 @@
-// import global from "./Game.js";
+import global from "./Game.js";
 import Player from "./Player.js";
 
 class Level1 extends Phaser.Scene {
@@ -6,13 +6,15 @@ class Level1 extends Phaser.Scene {
     super("Level1");
   }
 
-  init(data) {
-    if (data != undefined) {
-      this.socket = data.socket;
-    }
+  init() {
+    this.socket = global.socket;
+    this.socket.emit("level1");
+    global.playingGame = true;
   }
 
   create() {
+    let self = this;
+
     this.map = this.make.tilemap({
       key: "level2",
     });
@@ -22,14 +24,9 @@ class Level1 extends Phaser.Scene {
 
     this.players = this.physics.add.group();
 
-    // Socket
-    if (this.socket == undefined) {
-      this.socket = io();
-    }
-    let self = this;
-    this.socket.on("new player", (players) => {
+    this.socket.on("start playing", (players) => {
       Object.keys(players).forEach(function (id) {
-        if (players[id].playerId === self.socket.id) {
+        if (players[id].playerId === global.socket.id) {
           self.hero = new Player(self, players[id], "hero");
         } else {
           new Player(self, players[id], "enemy");
@@ -37,11 +34,7 @@ class Level1 extends Phaser.Scene {
       });
     });
 
-    this.socket.on("new enemy", (playerInfo) => {
-      new Player(this, playerInfo, "enemy");
-    });
-
-    this.socket.on("user disconnected", (playerId) => {
+    this.socket.on("left level1", (playerId) => {
       this.players.getChildren().forEach((otherPlayer) => {
         if (playerId === otherPlayer.playerId) {
           otherPlayer.destroy();
@@ -56,6 +49,11 @@ class Level1 extends Phaser.Scene {
         }
       });
     });
+
+    this.socket.on("winner", () => {
+      global.endText = self.win ? "You won!!!" : "I am sorry, you have lost :(";
+      this.scene.switch("End");
+    });
   } // create
 
   update() {
@@ -64,8 +62,8 @@ class Level1 extends Phaser.Scene {
       let tile = this.map.getTileAtWorldXY(this.hero.x, this.hero.y);
 
       if (tile != null && tile.index == 2) {
-        this.hero.destroy();
-        this.scene.start("End", { socket: this.socket, playerId: this.hero.playerId });
+        this.socket.emit("winner");
+        this.win = true;
       }
 
       this.physics.world.collide(

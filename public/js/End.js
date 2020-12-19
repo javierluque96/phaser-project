@@ -4,23 +4,25 @@ class End extends Phaser.Scene {
   constructor() {
     super("End");
   }
-  init(data) {
-    this.socket = data.socket;
-    this.id = data.playerId;
-  }
-
   create() {
     let config = global.config;
-
-    let start = this.add
-      .text(config.width / 2, config.height / 2, "You won!!", {
+    global.playingGame = false;
+    this.add
+      .text(config.width / 2, config.height / 2 - 60, global.endText, {
         font: "25px Arial",
-        fill: "yellow"
+        fill: "yellow",
       })
       .setOrigin(0.5);
 
-    // start.setInteractive().on("pointerdown", () => {
-    //   this.scene.start("Level1", { socket: this.socket });
+    let playAgain = this.add
+      .text(config.width / 2, config.height / 2, "Refresh to play again", {
+        font: "25px Arial",
+        fill: "yellow",
+      })
+      .setOrigin(0.5);
+
+    // playAgain.setInteractive().on("pointerdown", () => {
+    //   this.scene.switch("Menu");
     // });
   }
 }

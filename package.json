@@ -4,6 +4,8 @@
   "description": "",
   "main": "server.js",
   "dependencies": {
+    "autodoc": "^0.6.4",
+    "autodoc-npm": "^1.0.0",
     "express": "^4.17.1",
     "socket.io": "^3.0.4"
   },

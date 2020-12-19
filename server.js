@@ -17,14 +17,26 @@ app.get("/", function (req, res) {
 io.on("connection", (socket) => {
   console.log("a user connected:" + socket.id);
 
-  players[socket.id] = {
-    playerId: socket.id,
-    x: Math.floor(Math.random() * 640) + 50,
-    y: Math.floor(Math.random() * 480) + 50,
-  };
+  socket.on("menu", () => {
+    players[socket.id] = { active: false };
+    io.emit("players", players);
+  });
 
-  socket.emit("new player", players);
-  socket.broadcast.emit("new enemy", players[socket.id]);
+  socket.on("player active", () => {
+    players[socket.id].active = true;
+    io.emit("players", players);
+  });
+
+  socket.on("level1", () => {
+    players[socket.id] = {
+      playerId: socket.id,
+      x: Math.floor(Math.random() * 640) + 50,
+      y: Math.floor(Math.random() * 480) + 50,
+      active: true,
+    };
+
+    io.emit("start playing", players);
+  });
 
   socket.on("playerMovement", (movementData) => {
     players[socket.id].x = movementData.x;
@@ -32,10 +44,16 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("playerMoved", players[socket.id]);
   });
 
+  socket.on("winner", () => {
+    io.emit("winner");
+    io.emit("players", players);
+  });
+
   socket.on("disconnect", () => {
     console.log("user disconnected:" + socket.id);
     delete players[socket.id];
-    io.emit("user disconnected", socket.id);
+    socket.broadcast.emit("players", players);
+    io.emit("left level1", socket.id);
   });
 });
 
