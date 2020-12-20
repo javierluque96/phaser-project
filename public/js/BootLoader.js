@@ -7,7 +7,6 @@ class BootLoader extends Phaser.Scene {
 
 
     preload() {
-        
         this.load.tilemapTiledJSON("level1", "../js/json/level.json");
         this.load.tilemapTiledJSON("level2", "../js/json/level2.json");
         this.load.image("tile", "../assets/tile.png");
